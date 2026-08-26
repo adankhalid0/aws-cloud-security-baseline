@@ -7,218 +7,218 @@
 | Checkov (before fixes) | 2026-08-25 | terraform/ (pre-deploy) | 196 | 174 | 21 | 0 |
 | Checkov (after fixes, round 1)  | 2026-08-25 | terraform/ (pre-deploy) | 241 | 219 | 0  | 0 |
 | Checkov (final)  | 2026-08-26 | terraform/ (pre-deploy) | 297 | 274 | 0  | 0 |
-| Prowler (before S3 fix)       | 2026-08-25 19:08 | AWS account 728330702201 (post-deploy) | 87 | 59 | 28 | 2 (1 critical, 1 high) |
-| Prowler (after S3 fix)        | 2026-08-25 19:18 | AWS account 728330702201 (post-deploy) | 87 | 60 | 27 | 1 (1 critical, 0 high) |
-| Prowler (after CloudWatch fix) | 2026-08-25 20:27 | AWS account 728330702201 (post-deploy) | 87 | 74 | 13 | 1 (1 critical, 0 high) |
-| Prowler (final) | 2026-08-26 05:28 | AWS account 728330702201 (post-deploy) | 88 | 81 | 7 | 1 (1 critical, 0 high) |
+| Prowler (before S3 fix)       | 2026-08-25 19:08 | AWS account &lt;account-id&gt; (post-deploy) | 87 | 59 | 28 | 2 (1 critical, 1 high) |
+| Prowler (after S3 fix)        | 2026-08-25 19:18 | AWS account &lt;account-id&gt; (post-deploy) | 87 | 60 | 27 | 1 (1 critical, 0 high) |
+| Prowler (after CloudWatch fix) | 2026-08-25 20:27 | AWS account &lt;account-id&gt; (post-deploy) | 87 | 74 | 13 | 1 (1 critical, 0 high) |
+| Prowler (final) | 2026-08-26 05:28 | AWS account &lt;account-id&gt; (post-deploy) | 88 | 81 | 7 | 1 (1 critical, 0 high) |
 
-> `checkov -d terraform --config-file .checkov.yaml --compact` gir tallene rett i terminalen.
+> `checkov -d terraform --config-file .checkov.yaml --compact` prints the numbers straight to the terminal.
 
-Prowler-funn per tjeneste (endelig, 2026-08-26 05:28):
+Prowler findings per service (final, 2026-08-26 05:28):
 
 | Service    | FAIL | Severity breakdown |
 |------------|------|---------------------|
 | account    | 0    | -- |
 | cloudtrail | 1    | 1 medium |
-| cloudwatch | 1    | 1 medium (verifisert falsk positiv, se seksjon 3) |
+| cloudwatch | 1    | 1 medium (verified false positive, see section 3) |
 | iam        | 2    | 1 critical, 1 low |
 | kms        | 0    | -- (4 PASS) |
 | s3         | 3    | 3 medium |
 
-CIS 2.0 AWS Foundations Benchmark-score: **92.05% PASS** (opp fra 67.82% ved første Prowler-scan).
+CIS 2.0 AWS Foundations Benchmark score: **92.05% PASS** (up from 67.82% on the first Prowler scan).
 
 ---
 
-## 2. Checkov findings (shift-left, før deploy)
+## 2. Checkov findings (shift-left, before deploy)
 
-### CKV_AWS_338 -- CloudWatch log retention under 1 år
+### CKV_AWS_338 -- CloudWatch log retention under 1 year
 
 - **Severity:** Medium
 - **Resource:** `module.cloudtrail.aws_cloudwatch_log_group.cloudtrail`, `module.vpc.aws_cloudwatch_log_group.flow_logs`
-- **What it means:** CloudWatch-loggruppene for CloudTrail og VPC Flow Logs var satt til 90 dagers oppbevaring, under Checkovs anbefalte minimum på 1 år.
-- **Why it matters:** Ved et sikkerhetsincident kan man trenge å gå lenger tilbake enn 90 dager for å rekonstruere hva som skjedde.
-- **Fix applied:** Endret `default` for `cloudwatch_retention_days` og `flow_log_retention_days` fra 90 til 365 dager.
+- **What it means:** The CloudWatch log groups for CloudTrail and VPC Flow Logs were set to 90 days of retention, below Checkov's recommended minimum of 1 year.
+- **Why it matters:** During a security incident, you may need to go back further than 90 days to reconstruct what happened.
+- **Fix applied:** Changed the `default` for `cloudwatch_retention_days` and `flow_log_retention_days` from 90 to 365 days.
 - **Status:** ✅ Fixed
 
-### CKV_AWS_300 -- S3 lifecycle mangler opprydding av avbrutte multipart-opplastinger
+### CKV_AWS_300 -- S3 lifecycle missing cleanup of aborted multipart uploads
 
 - **Severity:** Low
 - **Resource:** `aws_s3_bucket_lifecycle_configuration.tfstate`, `module.logs_bucket.aws_s3_bucket_lifecycle_configuration.this`, `module.logs_bucket.aws_s3_bucket_lifecycle_configuration.logs[0]`
-- **What it means:** Ingen regel for å slette rester etter avbrutte multipart-opplastinger, som ellers kan ligge for alltid og koste penger.
-- **Fix applied:** La til `abort_incomplete_multipart_upload { days_after_initiation = 7 }` i alle tre lifecycle-konfigurasjonene.
+- **What it means:** No rule to delete leftovers from aborted multipart uploads, which can otherwise sit around forever and cost money.
+- **Fix applied:** Added `abort_incomplete_multipart_upload { days_after_initiation = 7 }` to all three lifecycle configurations.
 - **Status:** ✅ Fixed
 
-### CKV_AWS_21 -- Loggbucketen manglet en `aws_s3_bucket_versioning`-ressurs
+### CKV_AWS_21 -- The log bucket was missing an `aws_s3_bucket_versioning` resource
 
 - **Severity:** Medium
-- **Resource:** `module.logs_bucket.aws_s3_bucket.this` (hovedbucketen -- fikset), `module.logs_bucket.aws_s3_bucket.logs[0]` (loggbucketen -- se falsk-positiv-notat under)
-- **What it means:** Hovedbucketen manglet ganske enkelt versjonering fordi det ikke var med i den opprinnelige modul-koden.
-- **Fix applied:** La til `aws_s3_bucket_versioning "logs"`-ressursen for loggbucketen (samme mønster som hovedbucketen).
-- **Status:** ✅ Fixed (hovedbucket) / se "Falske positiver" under for loggbucketen
+- **Resource:** `module.logs_bucket.aws_s3_bucket.this` (main bucket -- fixed), `module.logs_bucket.aws_s3_bucket.logs[0]` (log bucket -- see false-positive note below)
+- **What it means:** The main bucket simply lacked versioning because it wasn't included in the original module code.
+- **Fix applied:** Added the `aws_s3_bucket_versioning "logs"` resource for the log bucket (same pattern as the main bucket).
+- **Status:** ✅ Fixed (main bucket) / see "False positives" below for the log bucket
 
-### CKV2_AWS_65 -- Loggbucketen tillot ACL-er (`BucketOwnerPreferred`)
+### CKV2_AWS_65 -- The log bucket allowed ACLs (`BucketOwnerPreferred`)
 
 - **Severity:** Medium
 - **Resource:** `module.logs_bucket.aws_s3_bucket_ownership_controls.logs[0]`
-- **What it means:** S3-tilgangslogging bruker tradisjonelt ACL-er for å gi S3s leveringstjeneste skrivetilgang til mål-bucketen, noe som krever at ACL-er er slått på.
-- **Why it matters:** ACL-er er en eldre, mindre oversiktlig tilgangsmodell enn bucket-policyer -- AWS anbefaler nå BucketOwnerEnforced (ACL-er helt av) overalt.
-- **Fix applied:** Satte `object_ownership = "BucketOwnerEnforced"` og erstattet ACL-leveransen med en eksplisitt bucket-policy (`aws_s3_bucket_policy.logs`) som gir `logging.s3.amazonaws.com` betinget skrivetilgang (kun fra kildebucketen, kun fra egen konto). Dette er AWS sin nyere, anbefalte metode for S3-tilgangslogging (tilgjengelig siden 2022).
-- **Status:** ✅ Fixed og verifisert både i Checkov og i Prowler (`s3_bucket_secure_transport_policy`, se seksjon 3).
+- **What it means:** S3 access logging has traditionally used ACLs to give S3's delivery service write access to the target bucket, which requires ACLs to be enabled.
+- **Why it matters:** ACLs are an older, less transparent access model than bucket policies -- AWS now recommends BucketOwnerEnforced (ACLs fully off) everywhere.
+- **Fix applied:** Set `object_ownership = "BucketOwnerEnforced"` and replaced the ACL delivery with an explicit bucket policy (`aws_s3_bucket_policy.logs`) that grants `logging.s3.amazonaws.com` conditional write access (only from the source bucket, only from the account itself). This is AWS's newer, recommended method for S3 access logging (available since 2022).
+- **Status:** ✅ Fixed and verified both in Checkov and in Prowler (`s3_bucket_secure_transport_policy`, see section 3).
 
-### CKV2_AWS_64 -- KMS-nøkler manglet eksplisitt policy
+### CKV2_AWS_64 -- KMS keys were missing an explicit policy
 
 - **Severity:** Low
 - **Resource:** `aws_kms_key.state`, `module.logs_bucket.aws_kms_key.this`, `module.vpc.aws_kms_key.flow_logs`
-- **What it means:** Nøklene brukte AWS sin standard nøkkelpolicy (som i praksis kun gir root-kontoen tilgang) i stedet for en eksplisitt definert policy.
-- **Fix applied:** La til en eksplisitt `data "aws_iam_policy_document"` per nøkkel med et `EnableRootPermissions`-statement, samme mønster som CloudTrail-nøkkelen allerede brukte.
+- **What it means:** The keys used AWS's default key policy (which in practice only grants access to the root account) instead of an explicitly defined policy.
+- **Fix applied:** Added an explicit `data "aws_iam_policy_document"` per key with an `EnableRootPermissions` statement, the same pattern the CloudTrail key already used.
 - **Status:** ✅ Fixed
 
-### CKV_AWS_356 / CKV_AWS_109 / CKV_AWS_111 -- KMS-nøkkelpolicyer med `Resource = "*"`
+### CKV_AWS_356 / CKV_AWS_109 / CKV_AWS_111 -- KMS key policies with `Resource = "*"`
 
-- **Severity:** Medium/High (etter Checkovs standard-alvorlighet)
-- **Resource:** Alle 4 KMS-nøkkelpolicyene i prosjektet (state, cloudtrail, s3-secure, vpc flow-logs)
-- **What it means:** Checkov flagger `Resource = "*"` som en generelt for bred IAM-tillatelse.
-- **Why it matters normally:** I en vanlig IAM-policy betyr `Resource = "*"` "alle ressurser i kontoen" -- alvorlig.
-- **Why it's different here:** Dette er en **KMS nøkkelpolicy** (resource policy), ikke en IAM-policy. I en KMS-nøkkelpolicy betyr `"*"` "denne spesifikke nøkkelen", ikke "alle AWS-ressurser". Å gi root-kontoen full kontroll over sin egen nøkkel er AWS sitt offisielt dokumenterte standardmønster.
-- **Status:** ⚠️ Accepted risk -- begrunnet `checkov:skip` i koden, se seksjon 5.
+- **Severity:** Medium/High (per Checkov's default severity)
+- **Resource:** All 4 KMS key policies in the project (state, cloudtrail, s3-secure, vpc flow-logs)
+- **What it means:** Checkov flags `Resource = "*"` as a generally overly broad IAM permission.
+- **Why it's different here:** This is a **KMS key policy** (a resource policy), not an IAM policy. In a KMS key policy, `"*"` means "this specific key", not "all AWS resources". Giving the root account full control over its own key is AWS's officially documented default pattern.
+- **Status:** ⚠️ Accepted risk -- justified `checkov:skip` in the code, see section 5.
 
-### CKV_AWS_252 -- CloudTrail mangler SNS-varsling
+### CKV_AWS_252 -- CloudTrail is missing SNS notification
 
 - **Severity:** Low
 - **Resource:** `module.cloudtrail.aws_cloudtrail.this`
-- **What it means:** Ingen får sanntidsvarsel dersom CloudTrail-loggingen endres eller stoppes.
-- **Status:** ⚠️ Accepted risk -- se seksjon 5.
+- **What it means:** No one gets a real-time alert if CloudTrail logging is changed or stopped.
+- **Status:** ⚠️ Accepted risk -- see section 5.
 
-### CKV2_AWS_62 -- S3-buckets mangler event-varsling
+### CKV2_AWS_62 -- S3 buckets are missing event notifications
 
 - **Severity:** Low
-- **Resource:** Alle 3 S3-buckets i prosjektet
-- **What it means:** Ingen SNS/SQS/Lambda-varsling ved nye objekter i bucketen.
-- **Status:** ⚠️ Accepted risk -- se seksjon 5.
+- **Resource:** All 3 S3 buckets in the project
+- **What it means:** No SNS/SQS/Lambda notification when new objects land in the bucket.
+- **Status:** ⚠️ Accepted risk -- see section 5.
 
-### CKV_AWS_145 / CKV_AWS_18 -- Loggbucketen bruker AES256 og har ikke egen access-logging
+### CKV_AWS_145 / CKV_AWS_18 -- The log bucket uses AES256 and has no access logging of its own
 
 - **Severity:** Low
 - **Resource:** `module.logs_bucket.aws_s3_bucket.logs[0]`
-- **What it means:** Loggbucketen krypterer med AES256 (SSE-S3) i stedet for KMS, og har ikke selv en access-logging-konfigurasjon.
-- **Why it's expected:** S3s access-logging-tjeneste kan historisk ikke skrive til KMS-krypterte mål-buckets -- AES256 er en reell AWS-begrensning, ikke en glipp. Å logge tilgang til selve loggbucketen (til seg selv) er sirkulært og gir ingen sikkerhetsverdi.
-- **Status:** ⚠️ Accepted risk (arkitektonisk nødvendig) -- se seksjon 5.
+- **What it means:** The log bucket encrypts with AES256 (SSE-S3) instead of KMS, and doesn't have its own access-logging configuration.
+- **Why it's expected:** S3's access-logging service historically cannot write to KMS-encrypted target buckets -- AES256 is a real AWS limitation, not an oversight. Logging access to the log bucket itself (to itself) is circular and provides no security value.
+- **Status:** ⚠️ Accepted risk (architecturally necessary) -- see section 5.
 
-### CKV_AWS_274 -- IAM-roller uten permissions boundary
+### CKV_AWS_274 -- IAM roles without a permissions boundary
 
 - **Severity:** Low
 - **Resource:** `module.iam.aws_iam_role.auditor`, `module.iam.aws_iam_role.support`
-- **What it means:** Checkov anbefaler en permissions boundary på IAM-roller for å begrense maksimal effektiv tilgang, selv om selve policyen er snever.
-- **Why it's accepted:** Begge rollene har allerede minimal, veldefinert tilgang (auditor: `ReadOnlyAccess` + `SecurityAudit`; support: kun `AWSSupportAccess`), MFA-krav på assume-role, og maks 1 times økter. En permissions boundary gir marginal ekstra verdi for et portefølje-prosjekt med to nøye avgrensede roller.
-- **Status:** ⚠️ Accepted risk -- begrunnet `checkov:skip` i koden, se seksjon 5.
+- **What it means:** Checkov recommends a permissions boundary on IAM roles to cap the maximum effective access, even when the policy itself is narrow.
+- **Why it's accepted:** Both roles already have minimal, well-defined access (auditor: `ReadOnlyAccess` + `SecurityAudit`; support: `AWSSupportAccess` only), an MFA requirement on assume-role, and a maximum 1-hour session. A permissions boundary adds marginal extra value for a portfolio project with two carefully scoped roles.
+- **Status:** ⚠️ Accepted risk -- justified `checkov:skip` in the code, see section 5.
 
-### Falske positiver: CKV_AWS_21, CKV2_AWS_6, CKV2_AWS_61 på loggbucketen
+### False positives: CKV_AWS_21, CKV2_AWS_6, CKV2_AWS_61 on the log bucket
 
 - **Resource:** `module.logs_bucket.aws_s3_bucket.logs[0]`
-- **What it means:** Checkov rapporterte at loggbucketen manglet versjonering, Public Access Block og lifecycle-konfigurasjon -- men alle tre ressursene **finnes faktisk** i koden (`aws_s3_bucket_versioning.logs`, `aws_s3_bucket_public_access_block.logs`, `aws_s3_bucket_lifecycle_configuration.logs`).
-- **How we verified this was a false positive:** Vi la eksplisitt til `aws_s3_bucket_versioning.logs`-ressursen og kjørte Checkov på nytt -- funnet forsvant ikke. Dette bekreftet at Checkov sin statiske graf-analyse ikke klarer å koble ressurser som refererer til en `count`-indeksert bucket (`aws_s3_bucket.logs[0]`) tilbake til selve bucket-ressursen -- en kjent begrensning i verktøyet, ikke en reell mangel i infrastrukturen.
-- **Status:** ⚠️ Accepted (verktøybegrensning, dokumentert med `checkov:skip` og henvisning til den faktiske ressursen).
+- **What it means:** Checkov reported that the log bucket was missing versioning, a Public Access Block, and a lifecycle configuration -- but all three resources **actually exist** in the code (`aws_s3_bucket_versioning.logs`, `aws_s3_bucket_public_access_block.logs`, `aws_s3_bucket_lifecycle_configuration.logs`).
+- **How we verified this was a false positive:** I explicitly added the `aws_s3_bucket_versioning.logs` resource and re-ran Checkov -- the finding didn't disappear. That confirmed Checkov's static graph analysis can't connect resources that reference a `count`-indexed bucket (`aws_s3_bucket.logs[0]`) back to the bucket resource itself -- a known limitation of the tool, not an actual gap in the infrastructure.
+- **Status:** ⚠️ Accepted (tool limitation, documented with `checkov:skip` and a reference to the actual resource).
 
 ---
 
-## 3. Prowler findings (post-deploy, live AWS-konto)
+## 3. Prowler findings (post-deploy, live AWS account)
 
-> Kontoen ble først skannet 2026-08-25 19:08. Etter S3-fiksen, CloudWatch-alarmene,
-> og til slutt en runde med fire målrettede funn (CloudTrail S3 data events,
-> IAM Support-rolle, S3 transport-policy på alle tre buckets, og
-> policy-attached-to-user), står kontoen igjen med **7 FAIL**, alle enten
-> aksepterte risikoer eller verifiserte falske positiver -- se seksjon 5.
+> The account was first scanned 2026-08-25 19:08. After the S3 fix, the
+> CloudWatch alarms, and finally a round covering four targeted findings
+> (CloudTrail S3 data events, the IAM Support role, the S3 transport policy
+> on all three buckets, and policy-attached-to-user), the account is left
+> with **7 FAIL**, all either accepted risks or verified false positives --
+> see section 5.
 
-### iam_root_hardware_mfa_enabled -- Root-kontoen bruker virtuell MFA, ikke maskinvare-MFA
+### iam_root_hardware_mfa_enabled -- The root account uses virtual MFA, not hardware MFA
 
 - **Severity:** Critical
-- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 1.6 (også CIS 1.4/1.5/3.0/4.0.1/5.0, AWS Foundational Security Best Practices IAM.6)
-- **Resource:** `arn:aws:iam::728330702201:mfa` (root-kontoen)
-- **What it means:** Root-kontoen har MFA aktivert, men det er en virtuell (app-basert) MFA-enhet, ikke en fysisk maskinvare-MFA-enhet slik CIS Level 2 krever.
-- **Remediation:** Kan ikke gjøres via Terraform -- root-brukeren administreres ikke via IAM-API. Må gjøres manuelt: logg inn som root i AWS-konsollen, gå til IAM Dashboard > "Activate MFA on your root account", fjern den virtuelle MFA-enheten og registrer en fysisk maskinvarenøkkel i stedet.
-- **Status:** ⚠️ Accepted risk for dette portefølje-prosjektet -- se seksjon 5 (krever kjøp av fysisk maskinvarenøkkel, som ikke er anskaffet for en demo-/øvingskonto).
+- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 1.6 (also CIS 1.4/1.5/3.0/4.0.1/5.0, AWS Foundational Security Best Practices IAM.6)
+- **Resource:** `arn:aws:iam::<account-id>:mfa` (root account)
+- **What it means:** The root account has MFA enabled, but it's a virtual (app-based) MFA device, not a physical hardware MFA device as CIS Level 2 requires.
+- **Remediation:** Can't be done via Terraform -- the root user isn't managed through the IAM API. Has to be done manually: log in as root in the AWS console, go to IAM Dashboard > "Activate MFA on your root account", remove the virtual MFA device and register a physical hardware key instead.
+- **Status:** ⚠️ Accepted risk for this portfolio project -- see section 5 (requires purchasing a physical hardware key, which hasn't been acquired for a demo/practice account).
 
-### s3_account_level_public_access_blocks -- Ingen kontonivå Block Public Access
+### s3_account_level_public_access_blocks -- No account-level Block Public Access
 
 - **Severity:** High
-- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 2.1.4 (også AWS Foundational Security Best Practices S3.1)
-- **Resource:** `arn:aws:s3:eu-north-1:728330702201:account` (kontonivå, ikke en enkelt bucket)
-- **Fix applied:** La til `resource "aws_s3_account_public_access_block" "this"` i `terraform/environments/dev/main.tf` med alle fire flagg satt til `true`.
-- **Status:** ✅ Fixed og verifisert.
+- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 2.1.4 (also AWS Foundational Security Best Practices S3.1)
+- **Resource:** `arn:aws:s3:eu-north-1:<account-id>:account` (account level, not a single bucket)
+- **Fix applied:** Added `resource "aws_s3_account_public_access_block" "this"` in `terraform/environments/dev/main.tf` with all four flags set to `true`.
+- **Status:** ✅ Fixed and verified.
 
-### 15x cloudwatch_log_metric_filter_* / cloudwatch_changes_to_* -- manglende CIS 2.0 monitoring-alarmer
+### 15x cloudwatch_log_metric_filter_* / cloudwatch_changes_to_* -- missing CIS 2.0 monitoring alarms
 
-- **Severity:** Medium (alle 15)
-- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 3.1-3.15 (seksjon 4, Monitoring)
-- **Resource:** CloudTrail-loggruppen `/cloudtrail/cloud-sec-baseline-dev-trail`
-- **Fix applied:** Bygget en ny Terraform-modul `modules/cloudwatch-alarms` med `for_each` over alle 15 CIS-kontrollene (metric filter + alarm per kontroll), pluss et SNS-topic alarmene varsler til (KMS-kryptert med `alias/aws/sns`).
-- **Status:** ✅ 14 av 15 fikset og verifisert. Den siste (`organizations_changes`) er en verifisert falsk positiv -- se eget punkt under.
+- **Severity:** Medium (all 15)
+- **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 3.1-3.15 (section 4, Monitoring)
+- **Resource:** CloudTrail log group `/cloudtrail/cloud-sec-baseline-dev-trail`
+- **Fix applied:** Built a new Terraform module `modules/cloudwatch-alarms` with `for_each` over all 15 CIS controls (a metric filter + alarm per control), plus an SNS topic the alarms notify (KMS-encrypted with `alias/aws/sns`).
+- **Status:** ✅ 14 of 15 fixed and verified. The last one (`organizations_changes`) is a verified false positive -- see the separate entry below.
 
-### cloudwatch_log_metric_filter_aws_organizations_changes -- verifisert falsk positiv i Prowler
-
-- **Severity:** Medium
-- **What it means:** Prowler rapporterer fortsatt FAIL på denne ene kontrollen, til tross for at både metric filter og alarm er korrekt konfigurert og består alle uavhengige verifiseringer (Prowlers egen regex, `aws logs describe-metric-filters`, `aws cloudwatch describe-alarms`, konsistent over 3 uavhengige scans).
-- **Status:** ⚠️ Accepted (verktøybegrensning i Prowler, dokumentert med full verifiseringskjede -- se seksjon 5).
-
-### s3_bucket_secure_transport_policy -- manglet HTTPS-only-policy på loggbucketen og tfstate-bucketen
+### cloudwatch_log_metric_filter_aws_organizations_changes -- verified false positive in Prowler
 
 - **Severity:** Medium
-- **Resource:** `cloud-sec-baseline-logs-khalid-4821-access-logs` (loggbucket), `tfstate-cloudsec-khalid-7291` (tfstate-bucket)
-- **What it means:** Hovedbucketen hadde allerede en `DenyInsecureTransport`-regel (del av CloudTrail-policyen), men loggbucketen og tfstate-bucketen hadde ingen bucket-policy som nektet ukryptert HTTP-tilgang.
-- **Fix applied:** La til et `DenyInsecureTransport`-statement (Deny `s3:*` når `aws:SecureTransport = false`) i bucket-policyen for begge bucketene. For loggbucketen ble dette kombinert med `log_delivery`-policyen (samme ressurs som gir `logging.s3.amazonaws.com` skrivetilgang, se CKV2_AWS_65 over).
-- **Debugging note:** Etter første `terraform apply` viste `terraform plan` "No changes", men et direkte `aws s3api get-bucket-policy`-kall mot loggbucketen viste at `DenyInsecureTransport`-statementet likevel ikke var der -- kun `S3ServerAccessLogsPolicy`. Terraform sin state hadde altså ikke fanget opp at policyen manglet et statement. Løsningen var `terraform apply -replace="module.logs_bucket.aws_s3_bucket_policy.logs[0]"` for å tvinge en reell `DeleteBucketPolicy` + `PutBucketPolicy`, som løste det. **Lærdom:** ikke stol blindt på at "no changes" i `terraform plan` betyr at live-ressursen faktisk matcher koden -- verifiser kritiske IAM/bucket-policyer direkte mot AWS API når noe virker uventet.
-- **Status:** ✅ Fixed og verifisert på alle tre buckets.
+- **What it means:** Prowler still reports FAIL on this one control, despite both the metric filter and the alarm being correctly configured and passing every independent verification (Prowler's own regex, `aws logs describe-metric-filters`, `aws cloudwatch describe-alarms`, consistent across 3 independent scans).
+- **Status:** ⚠️ Accepted (tool limitation in Prowler, documented with a full verification chain -- see section 5).
 
-### cloudtrail_s3_dataevents_read_enabled / cloudtrail_s3_dataevents_write_enabled -- manglet S3-objektnivå-logging
+### s3_bucket_secure_transport_policy -- missing HTTPS-only policy on the log bucket and the tfstate bucket
+
+- **Severity:** Medium
+- **Resource:** `cloud-sec-baseline-logs-khalid-4821-access-logs` (log bucket), `tfstate-cloudsec-khalid-7291` (tfstate bucket)
+- **What it means:** The main bucket already had a `DenyInsecureTransport` rule (part of the CloudTrail policy), but the log bucket and the tfstate bucket had no bucket policy denying unencrypted HTTP access.
+- **Fix applied:** Added a `DenyInsecureTransport` statement (Deny `s3:*` when `aws:SecureTransport = false`) to the bucket policy for both buckets. For the log bucket this was combined with the `log_delivery` policy (the same resource that grants `logging.s3.amazonaws.com` write access, see CKV2_AWS_65 above).
+- **Debugging note:** After the first `terraform apply`, `terraform plan` showed "No changes", but a direct `aws s3api get-bucket-policy` call against the log bucket showed the `DenyInsecureTransport` statement still wasn't there -- only `S3ServerAccessLogsPolicy`. Terraform's state hadn't picked up that the policy was missing a statement. The fix was `terraform apply -replace="module.logs_bucket.aws_s3_bucket_policy.logs[0]"` to force an actual `DeleteBucketPolicy` + `PutBucketPolicy`, which resolved it. **Lesson:** don't blindly trust that "no changes" in `terraform plan` means the live resource actually matches the code -- verify critical IAM/bucket policies directly against the AWS API when something looks off.
+- **Status:** ✅ Fixed and verified on all three buckets.
+
+### cloudtrail_s3_dataevents_read_enabled / cloudtrail_s3_dataevents_write_enabled -- missing S3 object-level logging
 
 - **Severity:** Medium/Low
 - **Resource:** `module.cloudtrail.aws_cloudtrail.this`
-- **What it means:** Trailen logget kun management events (opprette/slette/endre ressurser), ikke data events (GetObject/PutObject på objektnivå i S3).
-- **Fix applied:** La til en ekstra `event_selector`-blokk med `data_resource { type = "AWS::S3::Object", values = ["arn:aws:s3"] }`, som dekker alle S3-buckets i kontoen.
-- **Status:** ✅ Fixed og verifisert.
+- **What it means:** The trail only logged management events (create/delete/modify resources), not data events (object-level GetObject/PutObject in S3).
+- **Fix applied:** Added an extra `event_selector` block with `data_resource { type = "AWS::S3::Object", values = ["arn:aws:s3"] }`, which covers all S3 buckets in the account.
+- **Status:** ✅ Fixed and verified.
 
-### iam_support_role_created -- manglet dedikert rolle for AWS Support
+### iam_support_role_created -- missing a dedicated role for AWS Support
 
 - **Severity:** Medium/Low
 - **Compliance mapping:** CIS 2.0 AWS Foundations Benchmark 1.20
-- **What it means:** Ingen rolle fantes for å håndtere AWS Support-saker uten å bruke en full admin-bruker.
-- **Fix applied:** La til `aws_iam_role.support` (MFA-gated assume-role, samme prinsipp som auditor-rollen) med `AWSSupportAccess`-policyen tilknyttet.
-- **Status:** ✅ Fixed og verifisert.
+- **What it means:** No role existed for handling AWS Support cases without using a full admin user.
+- **Fix applied:** Added `aws_iam_role.support` (MFA-gated assume-role, same principle as the auditor role) with the `AWSSupportAccess` policy attached.
+- **Status:** ✅ Fixed and verified.
 
-### iam_policy_attached_only_to_group_or_roles -- policy hengt direkte på terraform-deployer
+### iam_policy_attached_only_to_group_or_roles -- policy attached directly to the terraform deployer
 
 - **Severity:** Low
-- **Resource:** `arn:aws:iam::728330702201:user/terraform-deployer`
-- **What it means:** Best practice i IAM er policy → gruppe → bruker, ikke policy direkte på en enkelt bruker.
-- **Fix applied:** Opprettet IAM-gruppen `terraform-deployers` (manuelt via AWS CLI, siden `terraform-deployer`-brukeren selv ikke administreres av dette Terraform-prosjektet -- se `modules/iam/main.tf`), hengte `TerraformCloudSecBaselineDeployer`-policyen på gruppen, la brukeren i gruppen, og fjernet deretter den direkte tilknytningen. Verifisert med `terraform plan` etterpå at tilgangen fortsatt fungerte identisk via gruppen.
-- **Status:** ✅ Fixed og verifisert.
+- **Resource:** `arn:aws:iam::<account-id>:user/terraform-deployer`
+- **What it means:** IAM best practice is policy → group → user, not policy directly on a single user.
+- **Fix applied:** Created the `terraform-deployers` IAM group (manually via AWS CLI, since the `terraform-deployer` user itself isn't managed by this Terraform project -- see `modules/iam/main.tf`), attached the `TerraformCloudSecBaselineDeployer` policy to the group, added the user to the group, and then removed the direct attachment. Verified afterward with `terraform plan` that access still worked identically through the group.
+- **Status:** ✅ Fixed and verified.
 
-### s3_bucket_no_mfa_delete (×3) / cloudtrail_bucket_requires_mfa_delete -- MFA Delete er ikke aktivert
+### s3_bucket_no_mfa_delete (×3) / cloudtrail_bucket_requires_mfa_delete -- MFA Delete is not enabled
 
 - **Severity:** Medium
-- **Resource:** Alle tre S3-buckets (`cloud-sec-baseline-logs-khalid-4821`, `-access-logs`, `tfstate-cloudsec-khalid-7291`)
-- **What it means:** MFA Delete krever en ekstra MFA-kode for å endre versjoneringsstatus eller slette objektversjoner -- et ekstra sikkerhetslag mot kompromitterte legitimasjoner.
-- **Why it's a hard AWS limitation:** MFA Delete kan **kun** aktiveres via AWS CLI/API med selve root-kontoens legitimasjon og en gyldig MFA-kode i API-kallet (`aws s3api put-bucket-versioning ... MFADelete=Enabled --mfa "..."`) -- verken IAM-brukere/roller (uansett rettigheter) eller Terraform kan gjøre dette, og AWS-konsollen støtter det heller ikke. Å aktivere dette ville krevd å midlertidig opprette root-tilgangsnøkler, noe AWS selv fraråder (og som Prowler flagger som egen risiko).
-- **Status:** ⚠️ Accepted risk -- se seksjon 5.
+- **Resource:** All three S3 buckets (`cloud-sec-baseline-logs-khalid-4821`, `-access-logs`, `tfstate-cloudsec-khalid-7291`)
+- **What it means:** MFA Delete requires an extra MFA code to change versioning status or delete object versions -- an extra layer of security against compromised credentials.
+- **Why it's a hard AWS limitation:** MFA Delete can **only** be enabled via the AWS CLI/API using the root account's own credentials and a valid MFA code in the API call (`aws s3api put-bucket-versioning ... MFADelete=Enabled --mfa "..."`) -- neither IAM users/roles (regardless of permissions) nor Terraform can do this, and the AWS console doesn't support it either. Enabling this would require temporarily creating root access keys, which AWS itself advises against (and which Prowler flags as its own risk).
+- **Status:** ⚠️ Accepted risk -- see section 5.
 
-### iam_check_saml_providers_sts -- ingen SAML identity provider konfigurert
+### iam_check_saml_providers_sts -- no SAML identity provider configured
 
 - **Severity:** Low
-- **Resource:** `arn:aws:iam::728330702201:root`
-- **What it means:** Prowler anbefaler SAML/SSO-føderasjon med midlertidige legitimasjoner i stedet for langvarige IAM-brukerlegitimasjoner.
-- **Why it's not applicable here:** Dette er en anbefaling for organisasjoner med en arbeidsstyrke som logger inn via en ekstern identity provider (Okta, Azure AD, osv.). For et portefølje-/øvingsprosjekt med én bruker er det ikke proporsjonalt å sette opp en full SAML IdP-integrasjon -- prosjektet bruker allerede midlertidige STS-legitimasjoner der det gir mening (auditor- og support-rollene, begge MFA-gated assume-role).
-- **Status:** ⚠️ Accepted / ikke relevant for prosjektets omfang -- se seksjon 5.
+- **Resource:** `arn:aws:iam::<account-id>:root`
+- **What it means:** Prowler recommends SAML/SSO federation with temporary credentials instead of long-lived IAM user credentials.
+- **Why it's not applicable here:** This is a recommendation for organizations with a workforce that signs in through an external identity provider (Okta, Azure AD, etc.). For a solo portfolio/practice project it isn't proportionate to set up a full SAML IdP integration -- the project already uses temporary STS credentials where it makes sense (the auditor and support roles, both MFA-gated assume-role).
+- **Status:** ⚠️ Accepted / not relevant to the project's scope -- see section 5.
 
 ---
 
 ## 4. Before / after comparison
 
-| Metric                  | Start (19:08) | Etter S3-fiks (19:18) | Etter CloudWatch-fiks (20:27) | Endelig (26.08, 05:28) |
+| Metric                  | Start (19:08) | After S3 fix (19:18) | After CloudWatch fix (20:27) | Final (Aug 26, 05:28) |
 |--------------------------|--------|-------|-------|-------|
 | Total FAIL               | 28     | 27    | 13    | **7** |
 | CRITICAL severity FAIL   | 1      | 1 (accepted risk) | 1 (accepted risk) | 1 (accepted risk) |
 | HIGH severity FAIL       | 1      | 0 ✅  | 0 ✅ | 0 ✅ |
-| MEDIUM severity FAIL     | 19 (15 CloudWatch + 4 S3/IAM) | 19 | 5 (1 CloudWatch falsk positiv + 4 nye S3/IAM) | 2 (1 CloudWatch falsk positiv, 1 gruppe MFA-delete på 3 buckets = 3 funn, se pkt under) |
+| MEDIUM severity FAIL     | 19 (15 CloudWatch + 4 S3/IAM) | 19 | 5 (1 CloudWatch false positive + 4 new S3/IAM) | 2 (1 CloudWatch false positive, 1 group of MFA-delete across 3 buckets = 3 findings, see entry above) |
 | LOW severity FAIL        | -      | -     | -     | 1 (SAML, accepted) |
 | CIS 2.0 compliance score | 67.82% PASS | 68.97% PASS | 85.06% PASS | **92.05% PASS** |
 
@@ -228,34 +228,64 @@ CIS 2.0 AWS Foundations Benchmark-score: **92.05% PASS** (opp fra 67.82% ved fø
 
 | Finding | Reason accepted | Compensating control |
 |---------|------------------|------------------------|
-| CKV_AWS_356/109/111 -- KMS policy `Resource=*` | AWS sitt anbefalte standardmønster for KMS nøkkelpolicyer; `"*"` betyr "denne nøkkelen", ikke alle ressurser | Kun root-kontoen og den spesifikke AWS-tjenesten har tilgang; nøkkelrotasjon er slått på |
-| CKV_AWS_274 -- IAM-roller uten permissions boundary | Begge rollene (auditor, support) har allerede minimal, presist avgrenset tilgang, MFA-krav og korte økter | ReadOnlyAccess/SecurityAudit/AWSSupportAccess er i seg selv snevre AWS-managed policyer |
-| CKV_AWS_252 -- CloudTrail uten SNS | Ingen aktiv drift/on-call i dette portefølje-prosjektet til å motta varsler | CloudWatch Logs-integrasjon gir fortsatt full, søkbar logging for manuell gjennomgang |
-| CKV2_AWS_62 -- S3 uten event-varsling | Krever en SNS/SQS/Lambda-mottaker ingen abonnerer på; unødvendig kompleksitet for et demo-prosjekt | Access logging og CloudTrail dekker sporbarhet |
-| CKV_AWS_145 -- Loggbucket bruker AES256 ikke KMS | S3 access-logging-leveranse støtter historisk ikke KMS-krypterte målbuckets | Bucketen er fullstendig privat (Public Access Block + BucketOwnerEnforced) |
-| CKV_AWS_18 -- Loggbucket uten egen access-logging | Sirkulært å logge tilgang til loggbucketen selv | N/A -- arkitektonisk unødvendig |
-| CKV_AWS_21 / CKV2_AWS_6 / CKV2_AWS_61 på logs[0] | Falske positiver -- ressursene finnes, men Checkov klarer ikke koble dem til en `count`-indeksert bucket i grafen sin | Verifisert manuelt ved å legge til ressursen og re-kjøre scan |
-| Prowler `iam_root_hardware_mfa_enabled` (CRITICAL) -- root har virtuell MFA, ikke maskinvare-MFA | Krever kjøp av en fysisk maskinvarenøkkel; ikke anskaffet for et demo-/øvingsprosjekt | Root har likevel MFA aktivert (virtuell), pluss dedikerte MFA-gated IAM-roller brukes til daglig i stedet for root |
-| Prowler `cloudwatch_log_metric_filter_aws_organizations_changes` (MEDIUM) -- falsk FAIL | Verifisert falsk positiv: metric filter og alarm er beviselig korrekt konfigurert (regex-test mot Prowlers egen kildekode + `aws logs describe-metric-filters` + `aws cloudwatch describe-alarms`) | Faktisk overvåkning finnes og fungerer; dette er utelukkende et rapporteringsproblem i Prowler |
-| Prowler `s3_bucket_no_mfa_delete` (×3) / `cloudtrail_bucket_requires_mfa_delete` (MEDIUM) | MFA Delete kan kun aktiveres med root-kontoens legitimasjon via CLI, ikke via Terraform, IAM-roller eller AWS-konsollen | Bucketene er fullstendig private, versjonerte og kryptert; tilgang skjer kun via MFA-gated roller, ikke direkte brukerlegitimasjoner |
-| Prowler `iam_check_saml_providers_sts` (LOW) | Enterprise-anbefaling for SSO-føderasjon; ikke proporsjonalt for et solo-portefølje-prosjekt | Midlertidige STS-legitimasjoner brukes allerede der det er relevant (auditor- og support-rollene) |
+| CKV_AWS_356/109/111 -- KMS policy `Resource=*` | AWS's recommended default pattern for KMS key policies; `"*"` means "this key", not all resources | Only the root account and the specific AWS service have access; key rotation is enabled |
+| CKV_AWS_274 -- IAM roles without a permissions boundary | Both roles (auditor, support) already have minimal, precisely scoped access, an MFA requirement, and short sessions | ReadOnlyAccess/SecurityAudit/AWSSupportAccess are themselves narrow AWS-managed policies |
+| CKV_AWS_252 -- CloudTrail without SNS | No active operations/on-call in this portfolio project to receive alerts | CloudWatch Logs integration still provides full, searchable logging for manual review |
+| CKV2_AWS_62 -- S3 without event notifications | Would require an SNS/SQS/Lambda receiver no one subscribes to; unnecessary complexity for a demo project | Access logging and CloudTrail cover traceability |
+| CKV_AWS_145 -- Log bucket uses AES256, not KMS | S3 access-logging delivery has historically not supported KMS-encrypted target buckets | The bucket is fully private (Public Access Block + BucketOwnerEnforced) |
+| CKV_AWS_18 -- Log bucket without its own access logging | Circular to log access to the log bucket itself | N/A -- architecturally unnecessary |
+| CKV_AWS_21 / CKV2_AWS_6 / CKV2_AWS_61 on logs[0] | False positives -- the resources exist, but Checkov can't connect them to a `count`-indexed bucket in its graph | Verified manually by adding the resource and re-running the scan |
+| Prowler `iam_root_hardware_mfa_enabled` (CRITICAL) -- root has virtual MFA, not hardware MFA | Requires purchasing a physical hardware key; not acquired for a demo/practice project | Root still has MFA enabled (virtual), plus dedicated MFA-gated IAM roles are used day-to-day instead of root |
+| Prowler `cloudwatch_log_metric_filter_aws_organizations_changes` (MEDIUM) -- false FAIL | Verified false positive: the metric filter and alarm are demonstrably correctly configured (regex test against Prowler's own source code + `aws logs describe-metric-filters` + `aws cloudwatch describe-alarms`) | Actual monitoring exists and works; this is purely a reporting issue in Prowler |
+| Prowler `s3_bucket_no_mfa_delete` (×3) / `cloudtrail_bucket_requires_mfa_delete` (MEDIUM) | MFA Delete can only be enabled with the root account's credentials via CLI, not via Terraform, IAM roles, or the AWS console | The buckets are fully private, versioned, and encrypted; access happens only via MFA-gated roles, not direct user credentials |
+| Prowler `iam_check_saml_providers_sts` (LOW) | Enterprise recommendation for SSO federation; not proportionate for a solo portfolio project | Temporary STS credentials are already used where relevant (the auditor and support roles) |
 
 ---
 
 ## 6. Lessons learned
 
-Den mest lærerike delen av Fase 4 var ikke selve fiksene, men å skille reelle funn fra falske positiver og fra AWS-spesifikke arkitekturbegrensninger. Flere ting overrasket meg:
+The most instructive part of the remediation work wasn't the fixes
+themselves, but learning to separate real findings from false positives and
+from AWS-specific architectural constraints. A few things surprised me:
 
-Først at "Resource = \*" betyr noe helt annet i en KMS-nøkkelpolicy enn i en vanlig IAM-policy -- Checkov flagger begge likt, så det krevde å faktisk forstå AWS sin dokumentasjon i stedet for å bare stole blindt på scanneren.
+First, that "Resource = *" means something completely different in a KMS
+key policy than in a regular IAM policy -- Checkov flags both the same way,
+so it took actually understanding AWS's documentation instead of just
+trusting the scanner blindly.
 
-For det andre fant jeg en reell begrensning i Checkov selv: verktøyet klarer ikke alltid koble ressurser til en S3-bucket som er opprettet med `count`, selv når ressursen åpenbart finnes i koden. Jeg bekreftet dette empirisk ved å legge til en manglende ressurs og se at funnet ikke forsvant.
+Second, I found a real limitation in Checkov itself: the tool doesn't
+always manage to connect resources to an S3 bucket created with `count`,
+even when the resource is clearly present in the code. I confirmed this
+empirically by adding a missing resource and watching that the finding
+didn't go away.
 
-For det tredje, og kanskje viktigst: `terraform plan` som viser "No changes" er **ikke** et vanntett bevis på at live-ressursen faktisk matcher koden. Da jeg la til et `DenyInsecureTransport`-statement i en bucket-policy, viste `plan` ingen diff -- men et direkte `aws s3api get-bucket-policy`-kall avslørte at statementet rett og slett ikke var der i AWS. State hadde en verdi som ikke stemte med virkeligheten, og Terraform sin refresh fanget det ikke opp automatisk for denne ressurstypen. Løsningen var `terraform apply -replace=<ressurs>` for å tvinge en reell skriving. Lærdommen: for sikkerhetskritiske ressurser (bucket-policyer, IAM-trust-policyer) er det verdt å verifisere direkte mot AWS API i tillegg til å stole på `terraform plan` -- spesielt etter at en fil har blitt endret av flere runder med redigering.
+Third, and maybe most important: `terraform plan` showing "No changes" is
+**not** watertight proof that the live resource actually matches the code.
+When I added a `DenyInsecureTransport` statement to a bucket policy, `plan`
+showed no diff -- but a direct `aws s3api get-bucket-policy` call revealed
+the statement simply wasn't there in AWS. State held a value that didn't
+match reality, and Terraform's refresh didn't automatically catch it for
+this resource type. The fix was `terraform apply -replace=<resource>` to
+force an actual write. The lesson: for security-critical resources (bucket
+policies, IAM trust policies), it's worth verifying directly against the
+AWS API in addition to trusting `terraform plan` -- especially after a file
+has gone through several rounds of edits.
 
-For det fjerde: ikke alle Prowler-funn er like relevante for et solo-portefølje-prosjekt. MFA Delete (krever root + CLI) og SAML-føderasjon (krever en hel IdP-integrasjon for en arbeidsstyrke som ikke finnes) er gode eksempler på funn der riktig respons er å dokumentere en begrunnet akseptert risiko, ikke å tvinge frem en teknisk "fiks" som ikke gir reell sikkerhetsverdi i denne konteksten.
+Fourth: not every Prowler finding is equally relevant to a solo portfolio
+project. MFA Delete (requires root + CLI) and SAML federation (requires a
+full IdP integration for a workforce that doesn't exist) are good examples
+of findings where the right response is to document a justified accepted
+risk, not force through a technical "fix" that doesn't provide real
+security value in this context.
 
-I en reell produksjonskonto ville jeg trolig fikset SNS-varsling og event-notifications med en gang i stedet for å akseptere risikoen, siden aktiv driftsvarsling er mye mer verdifull når det faktisk finnes et team som følger med. Jeg ville også prioritert fysisk MFA-nøkkel på root og MFA Delete på kritiske buckets tidlig i en reell prod-setup, siden begge er relativt billige tiltak mot svært alvorlige scenarier (fullstendig kontokompromittering).
+In a real production account, I'd probably fix SNS notifications and event
+notifications right away instead of accepting the risk, since active
+operational alerting is much more valuable when there's actually a team
+watching. I'd also prioritize a physical MFA key on root and MFA Delete on
+critical buckets early in a real production setup, since both are
+relatively cheap measures against very severe scenarios (full account
+compromise).
 
 ## License
 
-MIT -- se [LICENSE](LICENSE).
+MIT -- see [LICENSE](LICENSE).

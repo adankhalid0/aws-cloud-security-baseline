@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Kjører Prowler mot AWS-kontoen din og lagrer rapporter i ./reports/.
+# Runs Prowler against your AWS account and saves reports to ./reports/.
 #
-# Forutsetninger:
-#   - AWS CLI er konfigurert med en profil som har (minst) SecurityAudit +
-#     ViewOnlyAccess-rettigheter -- IKKE administrator. Se docs/PLAN.md Fase 5.
-#   - prowler er installert: pip install prowler   (eller: brew install prowler)
+# Prerequisites:
+#   - AWS CLI is configured with a profile that has (at least) SecurityAudit +
+#     ViewOnlyAccess permissions -- NOT administrator. See docs/PLAN.md Phase 6.
+#   - prowler is installed: pip install prowler   (or: brew install prowler)
 #
-# Bruk:
-#   ./scripts/run_prowler.sh <aws-profil-navn>
+# Usage:
+#   ./scripts/run_prowler.sh <aws-profile-name>
 #
-# Eksempel:
+# Example:
 #   ./scripts/run_prowler.sh security-auditor
 
 set -euo pipefail
@@ -18,8 +18,8 @@ PROFILE="${1:-default}"
 TIMESTAMP="$(date +%Y-%m-%d_%H%M)"
 OUTDIR="reports/prowler_${TIMESTAMP}"
 
-echo "==> Kjører Prowler med AWS-profil: ${PROFILE}"
-echo "==> Rapporter lagres i: ${OUTDIR}"
+echo "==> Running Prowler with AWS profile: ${PROFILE}"
+echo "==> Reports will be saved to: ${OUTDIR}"
 
 mkdir -p "${OUTDIR}"
 
@@ -30,11 +30,11 @@ prowler aws \
   --compliance cis_2.0_aws
 
 echo ""
-echo "==> Ferdig. Åpne HTML-rapporten i nettleser:"
-echo "    ${OUTDIR}/$(basename "$(ls "${OUTDIR}"/*.html 2>/dev/null | head -n1)" 2>/dev/null || echo '<rapportnavn>.html')"
+echo "==> Done. Open the HTML report in a browser:"
+echo "    ${OUTDIR}/$(basename "$(ls "${OUTDIR}"/*.html 2>/dev/null | head -n1)" 2>/dev/null || echo '<report-name>.html')"
 echo ""
-echo "Neste steg:"
-echo "  1. Gå gjennom FAIL-funn, prioriter CRITICAL/HIGH."
-echo "  2. Fyll ut docs/SECURITY_FINDINGS.md med funn, risiko og fiks."
-echo "  3. Rett opp i Terraform-koden, kjør 'terraform apply' på nytt."
-echo "  4. Kjør dette scriptet igjen og sammenlign score før/etter."
+echo "Next steps:"
+echo "  1. Review FAIL findings, prioritize CRITICAL/HIGH."
+echo "  2. Document findings, risk, and fix in docs/SECURITY_FINDINGS.md."
+echo "  3. Fix the Terraform code, run 'terraform apply' again."
+echo "  4. Run this script again and compare the before/after score."
