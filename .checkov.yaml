@@ -1,0 +1,20 @@
+# Checkov-konfigurasjon. Kjør lokalt med: checkov -d terraform --config-file .checkov.yaml
+# Dokumentasjon: https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+output: cli
+
+quiet: false
+compact: true
+
+# Bevisste, begrunnede unntak (foretrekk inline `checkov:skip=...` med begrunnelse
+# i selve .tf-filen når mulig -- disse er kun de som gjelder globalt/repo-bredt).
+skip-check:
+  - CKV_AWS_144 # Cross-region S3-replikering: unødvendig kostnad/kompleksitet for et portefølje-prosjekt.
+
+download-external-modules: false

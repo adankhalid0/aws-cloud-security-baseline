@@ -1,0 +1,30 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Hemmeligheter -- disse skal ALDRI committes
+terraform.tfvars
+*.pem
+*.key
+.env
+aws_credentials*
+
+# Prowler / rapporter (generert innhold -- se docs/SECURITY_FINDINGS.md for hvordan du deler funn)
+reports/
+prowler-output/
+
+# OS / editor
+.DS_Store
+.vscode/
+*.swp
