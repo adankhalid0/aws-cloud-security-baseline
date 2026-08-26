@@ -1,15 +1,15 @@
-# Gjenbrukbar modul for en "sikker som standard" S3-bucket:
-# - Ingen offentlig tilgang
-# - Kryptering at rest (KMS)
-# - Versjonering på
-# - Tilgangslogging til egen loggbucket
-# - Livssyklusregel som rydder opp gamle versjoner
-# Dette er nøyaktig settet med kontroller Checkov og Prowler sjekker for S3.
+# Reusable module for a "secure by default" S3 bucket:
+# - No public access
+# - Encryption at rest (KMS)
+# - Versioning on
+# - Access logging to a dedicated log bucket
+# - Lifecycle rule that cleans up old versions
+# This is exactly the set of controls Checkov and Prowler check for S3.
 
 data "aws_iam_policy_document" "this_kms" {
-  #checkov:skip=CKV_AWS_356: KMS nokkelpolicy - "Resource=*" betyr her "denne nokkelen", ikke alle ressurser i kontoen. Se begrunnelse i modules/cloudtrail/main.tf.
-  #checkov:skip=CKV_AWS_109: Se begrunnelse for CKV_AWS_356 over.
-  #checkov:skip=CKV_AWS_111: Se begrunnelse for CKV_AWS_356 over.
+  #checkov:skip=CKV_AWS_356: KMS key policy - "Resource=*" here means "this key", not all resources in the account. See justification in modules/cloudtrail/main.tf.
+  #checkov:skip=CKV_AWS_109: See justification for CKV_AWS_356 above.
+  #checkov:skip=CKV_AWS_111: See justification for CKV_AWS_356 above.
   statement {
     sid       = "EnableRootPermissions"
     effect    = "Allow"
@@ -24,13 +24,13 @@ data "aws_iam_policy_document" "this_kms" {
 
 resource "aws_kms_key" "this" {
   policy                  = data.aws_iam_policy_document.this_kms.json
-  description             = "KMS-nøkkel for ${var.bucket_name}"
+  description             = "KMS key for ${var.bucket_name}"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 }
 
 resource "aws_s3_bucket" "this" {
-  #checkov:skip=CKV2_AWS_62: Ingen aktiv mottaker (SNS/SQS/Lambda) for hendelsesvarsling i dette portefolje-prosjektet uten drift. Se docs/SECURITY_FINDINGS.md seksjon 5.
+  #checkov:skip=CKV2_AWS_62: No active receiver (SNS/SQS/Lambda) for event notifications in this portfolio project without live operations. See docs/SECURITY_FINDINGS.md section 5.
   bucket = var.bucket_name
 }
 
@@ -82,15 +82,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   }
 }
 
-# --- Egen loggbucket (mottar tilgangslogger fra hovedbucketen) ---
+# --- Dedicated log bucket (receives access logs from the main bucket) ---
 
 resource "aws_s3_bucket" "logs" {
-  #checkov:skip=CKV_AWS_145: S3 access-logging-mal-bucketer stotter ikke SSE-KMS, kun AES256/SSE-S3. Se kommentar i aws_s3_bucket_server_side_encryption_configuration.logs.
-  #checkov:skip=CKV_AWS_18: Dette ER logg-destinasjonsbucketen. Å logge tilgang til seg selv er sirkulaert og gir ingen verdi.
-  #checkov:skip=CKV_AWS_21: Falsk positiv - aws_s3_bucket_versioning.logs finnes og er Enabled. Checkov klarer ikke koble count-indeksert bucket (logs[0]) til ressursen i grafen.
-  #checkov:skip=CKV2_AWS_6: Falsk positiv - aws_s3_bucket_public_access_block.logs finnes med alle 4 flagg satt til true. Samme count-indeks-begrensning som over.
-  #checkov:skip=CKV2_AWS_61: Falsk positiv - aws_s3_bucket_lifecycle_configuration.logs finnes. Samme count-indeks-begrensning som over.
-  #checkov:skip=CKV2_AWS_62: Ingen aktiv mottaker (SNS/SQS/Lambda) for hendelsesvarsling i dette portefolje-prosjektet uten drift. Se docs/SECURITY_FINDINGS.md seksjon 5.
+  #checkov:skip=CKV_AWS_145: S3 access-logging target buckets do not support SSE-KMS, only AES256/SSE-S3. See comment in aws_s3_bucket_server_side_encryption_configuration.logs.
+  #checkov:skip=CKV_AWS_18: This IS the log destination bucket. Logging access to itself is circular and provides no value.
+  #checkov:skip=CKV_AWS_21: False positive - aws_s3_bucket_versioning.logs exists and is Enabled. Checkov fails to link the count-indexed bucket (logs[0]) to the resource in the graph.
+  #checkov:skip=CKV2_AWS_6: False positive - aws_s3_bucket_public_access_block.logs exists with all 4 flags set to true. Same count-index limitation as above.
+  #checkov:skip=CKV2_AWS_61: False positive - aws_s3_bucket_lifecycle_configuration.logs exists. Same count-index limitation as above.
+  #checkov:skip=CKV2_AWS_62: No active receiver (SNS/SQS/Lambda) for event notifications in this portfolio project without live operations. See docs/SECURITY_FINDINGS.md section 5.
   count  = var.enable_access_logging ? 1 : 0
   bucket = "${var.bucket_name}-access-logs"
 }
@@ -125,7 +125,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
   bucket = aws_s3_bucket.logs[0].id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256" # S3-tilgangslogging støtter ikke SSE-KMS som mål
+      sse_algorithm = "AES256" # S3 access logging does not support SSE-KMS as a target
     }
   }
 }
@@ -200,7 +200,7 @@ resource "aws_s3_bucket_policy" "logs" {
   policy = data.aws_iam_policy_document.log_delivery[0].json
 }
 
-# --- Valgfri bucket-policy som tillater CloudTrail å skrive hit ---
+# --- Optional bucket policy that allows CloudTrail to write here ---
 
 data "aws_iam_policy_document" "cloudtrail" {
   count = var.cloudtrail_bucket_policy ? 1 : 0

@@ -1,8 +1,8 @@
-# Minimal, "sikker som standard" VPC:
-# - Offentlige og private subnett i to soner (høy tilgjengelighet)
-# - VPC Flow Logs til CloudWatch (kryptert, med retention)
-# - Standard security group låst ned til "ingen trafikk" (et klassisk CIS/Prowler-sjekkpunkt)
-# - Ingen ressurser her åpner noe mot internett -- det er et bevisst valg for et portefølje-prosjekt.
+# Minimal, "secure by default" VPC:
+# - Public and private subnets across two zones (high availability)
+# - VPC Flow Logs to CloudWatch (encrypted, with retention)
+# - Default security group locked down to "no traffic" (a classic CIS/Prowler check)
+# - No resources here open anything to the internet -- a deliberate choice for a portfolio project.
 
 data "aws_availability_zones" "available" {
   state = "available"
@@ -16,10 +16,10 @@ resource "aws_vpc" "this" {
   tags = { Name = var.name }
 }
 
-# CIS/Prowler-sjekk: standard security group skal ikke tillate noe.
+# CIS/Prowler check: the default security group should allow nothing.
 resource "aws_default_security_group" "this" {
   vpc_id = aws_vpc.this.id
-  # Ingen ingress/egress-regler = all trafikk blokkert.
+  # No ingress/egress rules = all traffic blocked.
   tags = { Name = "${var.name}-default-locked" }
 }
 
@@ -33,7 +33,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = false # Bevisst av -- ingen instanser skal få public IP automatisk.
+  map_public_ip_on_launch = false # Deliberately off -- no instances should get a public IP automatically.
 
   tags = { Name = "${var.name}-public-${count.index}" }
 }
@@ -64,7 +64,7 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
-  tags   = { Name = "${var.name}-private-rt" } # Ingen NAT gateway i portefølje-oppsettet (koster penger) -- se docs/PLAN.md "Stretch goals".
+  tags   = { Name = "${var.name}-private-rt" } # No NAT gateway in the portfolio setup (costs money) -- see docs/PLAN.md "Stretch goals".
 }
 
 resource "aws_route_table_association" "private" {
@@ -79,9 +79,9 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 data "aws_iam_policy_document" "flow_logs_kms" {
-  #checkov:skip=CKV_AWS_356: KMS nokkelpolicy - "Resource=*" betyr her "denne nokkelen", ikke alle ressurser i kontoen. Se begrunnelse i modules/cloudtrail/main.tf.
-  #checkov:skip=CKV_AWS_109: Se begrunnelse for CKV_AWS_356 over.
-  #checkov:skip=CKV_AWS_111: Se begrunnelse for CKV_AWS_356 over.
+  #checkov:skip=CKV_AWS_356: KMS key policy - "Resource=*" here means "this key", not all resources in the account. See justification in modules/cloudtrail/main.tf.
+  #checkov:skip=CKV_AWS_109: See justification for CKV_AWS_356 above.
+  #checkov:skip=CKV_AWS_111: See justification for CKV_AWS_356 above.
   statement {
     sid       = "EnableRootPermissions"
     effect    = "Allow"
@@ -118,7 +118,7 @@ data "aws_iam_policy_document" "flow_logs_kms" {
 
 resource "aws_kms_key" "flow_logs" {
   policy                  = data.aws_iam_policy_document.flow_logs_kms.json
-  description             = "KMS-nøkkel for VPC flow logs"
+  description             = "KMS key for VPC flow logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 }

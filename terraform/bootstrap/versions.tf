@@ -9,7 +9,7 @@ terraform {
   }
 
   # Bootstrap has no remote backend yet -- it CREATES the backend.
-  # State for this tiny stack is kept local on purpose (see docs/PLAN.md, Fase 2).
+  # State for this tiny stack is kept local on purpose (see docs/PLAN.md, Phase 2).
 }
 
 provider "aws" {

@@ -1,9 +1,9 @@
-# Kopier denne filen til terraform.tfvars og fyll inn dine egne verdier.
-# terraform.tfvars skal ALDRI committes til git (den står i .gitignore).
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars must NEVER be committed to git (it's listed in .gitignore).
 
 aws_region       = "eu-north-1"
-logs_bucket_name = "cloud-sec-baseline-logs-<dittnavn>-<tilfeldigtall>"
+logs_bucket_name = "cloud-sec-baseline-logs-<your-name>-<random-number>"
 
 auditor_principal_arns = [
-  "arn:aws:iam::123456789012:user/ditt-brukernavn"
+  "arn:aws:iam::123456789012:user/your-username"
 ]

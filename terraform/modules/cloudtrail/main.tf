@@ -1,9 +1,9 @@
-# Multi-region CloudTrail med log file validation + CloudWatch Logs-integrasjon.
-# Dette er blant de aller viktigste CIS/Prowler-sjekkene: uten CloudTrail har du
-# ingen revisjonsspor av hva som skjer i kontoen din.
+# Multi-region CloudTrail with log file validation + CloudWatch Logs integration.
+# This is among the most important CIS/Prowler checks: without CloudTrail you
+# have no audit trail of what happens in your account.
 
 resource "aws_kms_key" "cloudtrail" {
-  description             = "KMS-nøkkel for CloudTrail-logger"
+  description             = "KMS key for CloudTrail logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 
@@ -14,9 +14,9 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 data "aws_iam_policy_document" "kms" {
-  #checkov:skip=CKV_AWS_356: KMS nokkelpolicy - "Resource=*" betyr her "denne nokkelen", ikke alle ressurser. Dette er AWS sitt anbefalte standardmonster for CloudTrail-nokler.
-  #checkov:skip=CKV_AWS_109: Se begrunnelse for CKV_AWS_356 over.
-  #checkov:skip=CKV_AWS_111: Se begrunnelse for CKV_AWS_356 over.
+  #checkov:skip=CKV_AWS_356: KMS key policy - "Resource=*" here means "this key", not all resources. This is AWS's recommended standard pattern for CloudTrail keys.
+  #checkov:skip=CKV_AWS_109: See justification for CKV_AWS_356 above.
+  #checkov:skip=CKV_AWS_111: See justification for CKV_AWS_356 above.
   statement {
     sid       = "EnableRootPermissions"
     effect    = "Allow"
@@ -106,7 +106,7 @@ resource "aws_iam_role_policy" "cwl_permissions" {
 }
 
 resource "aws_cloudtrail" "this" {
-  #checkov:skip=CKV_AWS_252: Aksepterer risiko for dette portefolje-prosjektet - ingen aktiv drift/on-call som mottar SNS-varsler uansett. CloudWatch Logs-integrasjonen gir fortsatt full logging og mulighet for manuell gjennomgang. Se docs/SECURITY_FINDINGS.md seksjon 5.
+  #checkov:skip=CKV_AWS_252: Accepting the risk for this portfolio project - no active operations/on-call receiving SNS alerts anyway. The CloudWatch Logs integration still provides full logging and the ability for manual review. See docs/SECURITY_FINDINGS.md section 5.
   name                          = var.trail_name
   s3_bucket_name                = var.s3_bucket_name
   is_multi_region_trail         = true
@@ -123,12 +123,12 @@ resource "aws_cloudtrail" "this" {
   }
 
   # Prowler: cloudtrail_s3_dataevents_read_enabled / cloudtrail_s3_dataevents_write_enabled.
-  # Management events alene fanger ikke opp objektniva-operasjoner (GetObject/
-  # PutObject) i S3 -- uten data events har vi ingen sporbarhet for hvem som
-  # faktisk leste eller skrev CloudTrail-loggene/tfstate-filene selv.
-  # "arn:aws:s3" (uten bucket-navn) dekker alle bucketer i kontoen, som er det
-  # denne CIS-relaterte sjekken krever. NB: kan gi ekstra CloudTrail-kostnad
-  # ved hoyt S3-volum -- akseptabelt i dette portefolje-prosjektet.
+  # Management events alone do not capture object-level operations (GetObject/
+  # PutObject) in S3 -- without data events we have no traceability of who
+  # actually read or wrote the CloudTrail logs/tfstate files themselves.
+  # "arn:aws:s3" (without a bucket name) covers all buckets in the account,
+  # which is what this CIS-related check requires. NB: can add extra
+  # CloudTrail cost at high S3 volume -- acceptable for this portfolio project.
   event_selector {
     read_write_type           = "All"
     include_management_events = false

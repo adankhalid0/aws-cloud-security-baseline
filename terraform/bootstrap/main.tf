@@ -1,12 +1,12 @@
-# Bootstrap: oppretter S3-bucket + DynamoDB-tabell for Terraform remote state.
-# Kjøres ÉN gang, før resten av prosjektet. Se docs/PLAN.md Fase 2.
+# Bootstrap: creates the S3 bucket + DynamoDB table for Terraform remote state.
+# Run ONCE, before the rest of the project. See docs/PLAN.md Phase 2.
 
 data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "state_kms" {
-  #checkov:skip=CKV_AWS_356: KMS nokkelpolicy - "Resource=*" betyr her "denne nokkelen", ikke alle ressurser i kontoen. Se begrunnelse i modules/cloudtrail/main.tf.
-  #checkov:skip=CKV_AWS_109: Se begrunnelse for CKV_AWS_356 over.
-  #checkov:skip=CKV_AWS_111: Se begrunnelse for CKV_AWS_356 over.
+  #checkov:skip=CKV_AWS_356: KMS key policy - "Resource=*" here means "this key", not all resources in the account. See justification in modules/cloudtrail/main.tf.
+  #checkov:skip=CKV_AWS_109: See justification for CKV_AWS_356 above.
+  #checkov:skip=CKV_AWS_111: See justification for CKV_AWS_356 above.
   statement {
     sid       = "EnableRootPermissions"
     effect    = "Allow"
@@ -21,7 +21,7 @@ data "aws_iam_policy_document" "state_kms" {
 
 resource "aws_kms_key" "state" {
   policy                  = data.aws_iam_policy_document.state_kms.json
-  description             = "KMS-nøkkel for kryptering av Terraform state"
+  description             = "KMS key for encrypting Terraform state"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 }
@@ -34,8 +34,8 @@ resource "aws_kms_alias" "state" {
 resource "aws_s3_bucket" "tfstate" {
   bucket = var.state_bucket_name
 
-  # checkov:skip=CKV_AWS_144: Cross-region replikering er ikke nødvendig for et portefølje-prosjekt.
-  #checkov:skip=CKV2_AWS_62: Ingen aktiv mottaker (SNS/SQS/Lambda) for hendelsesvarsling i dette portefolje-prosjektet uten drift. Se docs/SECURITY_FINDINGS.md seksjon 5.
+  # checkov:skip=CKV_AWS_144: Cross-region replication is not needed for a portfolio project.
+  #checkov:skip=CKV2_AWS_62: No active receiver (SNS/SQS/Lambda) for event notifications in this portfolio project without live operations. See docs/SECURITY_FINDINGS.md section 5.
 }
 
 resource "aws_s3_bucket_versioning" "tfstate" {
@@ -97,9 +97,9 @@ resource "aws_s3_bucket_logging" "tfstate" {
   target_prefix = "access-logs/"
 }
 
-# Prowler: s3_bucket_secure_transport_policy -- tfstate-bucketen manglet en
-# bucket-policy i det hele tatt, sa det var ingenting som hindret ukryptert
-# HTTP-tilgang til Terraform state (som kan inneholde sensitive verdier).
+# Prowler: s3_bucket_secure_transport_policy -- the tfstate bucket had no
+# bucket policy at all, so nothing prevented unencrypted HTTP access to
+# the Terraform state (which can contain sensitive values).
 data "aws_iam_policy_document" "tfstate" {
   statement {
     sid       = "DenyInsecureTransport"

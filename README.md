@@ -126,8 +126,27 @@ cd ../../bootstrap && terraform destroy
 
 ## Lessons learned
 
-_Short personal reflection -- what surprised you, what you'd do differently
-in a production account, which findings were hardest to understand._
+Building this end-to-end -- not just `terraform apply`, but scanning,
+deploying, auditing, and fixing -- made it obvious how much a fresh AWS
+account gets wrong by default: no CloudTrail data events, no account-wide
+password policy, no metric filters wired up to alarms even though the logs
+were already there. Checkov caught the structural issues before anything
+was even deployed; Prowler caught the runtime/account-level ones that only
+show up once real resources exist, which is exactly why the project runs
+both instead of relying on just one.
+
+The CI pipeline turned out to be its own small lesson: getting GitHub
+Actions permissions right for the SARIF upload, and getting YAML
+indentation exactly consistent, took more iterations than the Terraform
+code itself. It was a good reminder that "the pipeline is part of the
+security control" -- a workflow that silently fails to run is just as bad
+as not having the check at all.
+
+In a real production account I'd take this further: federate CI with AWS
+via OIDC instead of long-lived access keys, add Service Control Policies
+at the AWS Organizations level as a second guardrail on top of IAM, and
+run Prowler on a schedule (not just once) so drift gets caught
+automatically instead of only at deploy time.
 
 ## License
 

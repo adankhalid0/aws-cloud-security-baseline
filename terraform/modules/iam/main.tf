@@ -1,10 +1,10 @@
-# IAM-modul: demonstrerer least-privilege prinsippet.
-# 1) En skrivebeskyttet "auditor"-rolle andre kan påta seg (assume) i stedet for å dele nøkler.
-# 2) En kontobred passord-policy som følger CIS AWS Foundations Benchmark.
+# IAM module: demonstrates the least-privilege principle.
+# 1) A read-only "auditor" role others can assume instead of sharing keys.
+# 2) An account-wide password policy that follows the CIS AWS Foundations Benchmark.
 #
-# MERK: Selve Terraform-deployeren (brukeren/rollen som kjører `terraform apply`)
-# er IKKE definert her -- den settes opp manuelt med minimum nødvendige rettigheter,
-# se docs/PLAN.md Fase 1 (steg "Opprett IAM-bruker for Terraform").
+# NOTE: The actual Terraform deployer (the user/role that runs `terraform apply`)
+# is NOT defined here -- it is set up manually with the minimum necessary
+# permissions, see docs/PLAN.md Phase 1 (step "Create IAM user for Terraform").
 
 data "aws_iam_policy_document" "auditor_trust" {
   statement {
@@ -30,9 +30,9 @@ data "aws_iam_policy_document" "auditor_trust" {
 resource "aws_iam_role" "auditor" {
   name                 = "security-auditor-readonly"
   assume_role_policy   = data.aws_iam_policy_document.auditor_trust.json
-  max_session_duration = 3600 # 1 time -- korte, tidsbegrensede økter
+  max_session_duration = 3600 # 1 hour -- short, time-limited sessions
 
-  # checkov:skip=CKV_AWS_274: Rollen er ment for skrivebeskyttet tilgang uten permissions boundary i dette portefølje-prosjektet.
+  # checkov:skip=CKV_AWS_274: This role is intended for read-only access without a permissions boundary in this portfolio project.
 }
 
 resource "aws_iam_role_policy_attachment" "auditor_readonly" {
@@ -45,11 +45,11 @@ resource "aws_iam_role_policy_attachment" "auditor_security_audit" {
   policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
 }
 
-# Prowler: iam_support_role_created (CIS 2.0 1.20) -- en rolle dedikert til a
-# opprette/handtere saker med AWS Support, slik at man ikke trenger root eller
-# en admin-bruker sine fulle rettigheter bare for a be om support-hjelp.
-# Samme prinsipp som auditor-rollen over: assume-role for kjente principaler,
-# MFA-gated, ingen delte nokler.
+# Prowler: iam_support_role_created (CIS 2.0 1.20) -- a role dedicated to
+# creating/managing AWS Support cases, so that you don't need root or an
+# admin user's full permissions just to ask for support help.
+# Same principle as the auditor role above: assume-role for known principals,
+# MFA-gated, no shared keys.
 data "aws_iam_policy_document" "support_trust" {
   statement {
     effect  = "Allow"
@@ -74,9 +74,9 @@ data "aws_iam_policy_document" "support_trust" {
 resource "aws_iam_role" "support" {
   name                 = "aws-support-access"
   assume_role_policy   = data.aws_iam_policy_document.support_trust.json
-  max_session_duration = 3600 # 1 time -- korte, tidsbegrensede okter
+  max_session_duration = 3600 # 1 hour -- short, time-limited sessions
 
-  # checkov:skip=CKV_AWS_274: Rollen er ment for AWS Support-tilgang uten permissions boundary i dette portefolje-prosjektet.
+  # checkov:skip=CKV_AWS_274: This role is intended for AWS Support access without a permissions boundary in this portfolio project.
 }
 
 resource "aws_iam_role_policy_attachment" "support_access" {
@@ -84,7 +84,7 @@ resource "aws_iam_role_policy_attachment" "support_access" {
   policy_arn = "arn:aws:iam::aws:policy/AWSSupportAccess"
 }
 
-# Kontobred passordpolicy -- et av de vanligste Prowler/CIS-funnene i ferske AWS-kontoer.
+# Account-wide password policy -- one of the most common Prowler/CIS findings in fresh AWS accounts.
 resource "aws_iam_account_password_policy" "this" {
   minimum_password_length        = var.password_policy_min_length
   require_lowercase_characters   = true

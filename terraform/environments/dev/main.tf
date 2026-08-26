@@ -42,8 +42,8 @@ module "iam" {
 }
 
 # Prowler: 15x cloudwatch_log_metric_filter_* / cloudwatch_changes_to_*
-# (MEDIUM, CIS 2.0 seksjon 4). Kobler metric filters + alarmer til
-# CloudTrail-loggruppen som allerede finnes i module.cloudtrail.
+# (MEDIUM, CIS 2.0 section 4). Wires up metric filters + alarms to the
+# CloudTrail log group that already exists in module.cloudtrail.
 module "cloudwatch_alarms" {
   source = "../../modules/cloudwatch-alarms"
 

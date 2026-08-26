@@ -1,17 +1,17 @@
 variable "aws_region" {
-  description = "AWS-region hvor state-ressursene opprettes."
+  description = "AWS region where the state resources are created."
   type        = string
-  default     = "eu-north-1" # Stockholm - nærmest Norge
+  default     = "eu-north-1" # Stockholm - closest to Norway
 }
 
 variable "state_bucket_name" {
-  description = "Globalt unikt navn på S3-bucketen som skal lagre Terraform state. MÅ endres før apply."
+  description = "Globally unique name for the S3 bucket that stores the Terraform state. MUST be changed before apply."
   type        = string
-  # Eksempel: "tfstate-cloud-sec-baseline-<dittnavn>-<tilfeldigtall>"
+  # Example: "tfstate-cloud-sec-baseline-<your-name>-<random-number>"
 }
 
 variable "lock_table_name" {
-  description = "Navn på DynamoDB-tabellen som brukes til state-låsing."
+  description = "Name of the DynamoDB table used for state locking."
   type        = string
   default     = "tfstate-locks"
 }

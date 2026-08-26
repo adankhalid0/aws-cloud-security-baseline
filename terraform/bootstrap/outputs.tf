@@ -1,14 +1,14 @@
 output "state_bucket_name" {
-  description = "Navn på S3-bucketen for Terraform state (brukes i backend-blokken under environments/dev)."
+  description = "Name of the S3 bucket for Terraform state (used in the backend block under environments/dev)."
   value       = aws_s3_bucket.tfstate.bucket
 }
 
 output "lock_table_name" {
-  description = "Navn på DynamoDB-tabellen for state-låsing."
+  description = "Name of the DynamoDB table used for state locking."
   value       = aws_dynamodb_table.lock.name
 }
 
 output "kms_key_arn" {
-  description = "ARN til KMS-nøkkelen brukt for kryptering av state."
+  description = "ARN of the KMS key used to encrypt the state."
   value       = aws_kms_key.state.arn
 }

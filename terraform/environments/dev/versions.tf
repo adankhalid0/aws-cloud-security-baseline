@@ -8,8 +8,8 @@ terraform {
     }
   }
 
-  # Fylles ut etter at bootstrap er kjørt (docs/PLAN.md Fase 2).
-  # Kjør deretter: terraform init -migrate-state
+  # Fill this in after bootstrap has been run (docs/PLAN.md Phase 2).
+  # Then run: terraform init -migrate-state
   backend "s3" {
     bucket         = "tfstate-cloudsec-khalid-7291"
     key            = "cloud-sec-baseline/dev/terraform.tfstate"
