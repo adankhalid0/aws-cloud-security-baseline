@@ -5,6 +5,7 @@
 # - No resources here open anything to the internet -- a deliberate choice for a portfolio project.
 
 data "aws_availability_zones" "available" {
+  #checkov:skip=CKV_AWS_394: Only the first two zones (names[0] and names[1]) are used for the subnets. A zone added later is sorted after them and does not change the existing subnets.
   state = "available"
 }
 
