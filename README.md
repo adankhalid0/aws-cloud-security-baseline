@@ -1,5 +1,7 @@
 # AWS Cloud Security Baseline
 
+[![CI](https://github.com/adankhalid0/aws-cloud-security-baseline/actions/workflows/terraform-checkov.yml/badge.svg)](https://github.com/adankhalid0/aws-cloud-security-baseline/actions/workflows/terraform-checkov.yml)
+
 A secure-by-default AWS foundation (VPC, S3, IAM, CloudTrail) built with
 **Terraform**, scanned pre-deploy with **Checkov** (shift-left IaC security),
 audited post-deploy with **Prowler** (CIS AWS Foundations Benchmark), and
@@ -57,8 +59,6 @@ findings from this specific run.
                               └─────────────┘
 ```
 
-_(Replace with a proper diagram exported to `docs/architecture.png` -- see
-`docs/PLAN.md` Phase 9.)_
 
 ## What gets deployed
 
