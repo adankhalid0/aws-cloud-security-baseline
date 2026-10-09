@@ -120,11 +120,11 @@ See [`docs/SECURITY_FINDINGS.md`](docs/SECURITY_FINDINGS.md) for full details.
 
 **Before remediation** (first audit run): 87 findings, 59 passed, 28 failed.
 
-![Prowler assessment overview before remediation](docs/images/prowler-before.png)
+<img src="docs/images/prowler-before.png" alt="Prowler assessment overview before remediation" width="340">
 
 **After remediation** (final audit run): 88 findings, 81 passed, 7 failed. The 7 remaining findings are documented as accepted risks.
 
-![Prowler assessment overview after remediation](docs/images/prowler-after.png)
+<img src="docs/images/prowler-after.png" alt="Prowler assessment overview after remediation" width="340">
 
 ## Cleanup
 
