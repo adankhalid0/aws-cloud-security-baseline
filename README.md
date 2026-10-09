@@ -117,7 +117,12 @@ See [`docs/SECURITY_FINDINGS.md`](docs/SECURITY_FINDINGS.md) for full details.
 | Prowler FAIL (Critical/High) | 2 (1 critical, 1 high) | 1 (1 critical, 0 high) |
 | CIS 2.0 AWS compliance score | 67.82% | 92.05% |
 
-Prowler summary from the final audit run (CIS AWS Foundations Benchmark 2.0): 88 findings, 81 passed, 7 failed. The 7 remaining findings are documented as accepted risks.
+
+**Before remediation** (first audit run): 87 findings, 59 passed, 28 failed.
+
+![Prowler assessment overview before remediation](docs/images/prowler-before.png)
+
+**After remediation** (final audit run): 88 findings, 81 passed, 7 failed. The 7 remaining findings are documented as accepted risks.
 
 ![Prowler assessment overview after remediation](docs/images/prowler-after.png)
 
